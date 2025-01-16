@@ -1,6 +1,6 @@
 CXX      := g++
-CXXFLAGS := -Wall
-LDFLAGS  := -lglfw -lGLEW -lGL
+CXXFLAGS := -Wall -I/usr/include/imgui
+LDFLAGS  := -lglfw -lGLEW -lGL -limgui -lstb
 
 SRC      := $(wildcard *.cpp)
 OBJ      := $(SRC:.cpp=.o)

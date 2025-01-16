@@ -127,6 +127,7 @@ bool objLoader::load(const std::string& filename) {
     }
     // copy to vbo
     this -> vbo_size = tmp_vbo.size() * sizeof(float);
+    if (this -> vbo) delete[] this -> vbo;
     this -> vbo = new float[tmp_vbo.size()];
     for (size_t i = 0; i < tmp_vbo.size(); i++)
         this -> vbo[i] = tmp_vbo[i];

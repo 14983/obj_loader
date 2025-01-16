@@ -6,10 +6,13 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "imgui_util.h"
 
 objLoader obj;
 const int window_width = 1600;
 const int window_height = 900;
+glm::vec3 light_pos = glm::vec3(0.0f, 0.0f, 5.0f);
+glm::vec3 light_color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 // shaders
 std::string vertexShaderSource, fragmentShaderSource;
@@ -123,6 +126,9 @@ int main() {
     GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
     glEnable(GL_DEPTH_TEST);
+
+    setupImGUI(window);
+
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -139,13 +145,49 @@ int main() {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
 
         // set light and color
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.0f, 1.0f, 2.0f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), light_pos.x, light_pos.y, light_pos.z);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), light_color.x, light_color.y, light_color.z);
         glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 0.5f, 0.5f, 0.8f);
 
         // bind VAO and draw
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, vertices_size / sizeof(float) / 8);
+
+        // imgui
+        // light control panel
+        setupImGUIFrame();
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(200, window_height / 2));
+        ImGui::Begin("Light Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        ImGui::SliderFloat("Light X", &light_pos.x, -10.0f, 10.0f);
+        ImGui::SliderFloat("Light Y", &light_pos.y, -10.0f, 10.0f);
+        ImGui::SliderFloat("Light Z", &light_pos.z, -10.0f, 10.0f);
+        ImGui::End();
+
+        // model control panel (for future use)
+        ImGui::SetNextWindowPos(ImVec2(0, window_height / 2));
+        ImGui::SetNextWindowSize(ImVec2(200, window_height / 2));
+        ImGui::Begin("Model Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        static char modelPath[128] = "";
+        ImGui::InputText("Model Path", modelPath, 128);
+        if (ImGui::Button("Load Model")) {
+            std::cout << "Loading model: " << modelPath << std::endl;
+            if (!obj.load(modelPath)) {
+                ImGui::OpenPopup("Error");
+            } else {
+                vertices = obj.getVBO();
+                vertices_size = obj.getVBOSize();
+            }
+        }
+        if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Error loading model");
+            if (ImGui::Button("OK")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::End();
+        endImGUIFrame();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -155,6 +197,7 @@ int main() {
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
 
+    clearImGUIContext();
     glfwTerminate();
     return 0;
 }
