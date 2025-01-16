@@ -71,6 +71,34 @@ GLuint createShaderProgram(const std::string &vertexSource, const std::string &f
     return shaderProgram;
 }
 
+// update VAO and VBO
+void updateVAOandVBO(const float *vertices, size_t vertices_size, GLuint &VAO, GLuint &VBO) {
+    if (VAO != 0) {
+        glDeleteVertexArrays(1, &VAO);
+        VAO = 0;
+    }
+    if (VBO != 0) {
+        glDeleteBuffers(1, &VBO);
+        VBO = 0;
+    }
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
 int main() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -99,26 +127,13 @@ int main() {
 
     glViewport(0, 0, window_width, window_height);
 
-    obj.load("res/model/shuttle/shuttle.obj");
+    obj.load("res/model/cow/cow.obj");
 
     const float *vertices = obj.getVBO();
     size_t vertices_size = obj.getVBOSize();
 
     GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    updateVAOandVBO(vertices, vertices_size, VAO, VBO);
 
     // create shader program
     vertexShaderSource = loadShaderFromFile("res/shader/model.vs");
@@ -132,11 +147,15 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // time
+        float time = glfwGetTime();
+
         // user shader program
         glUseProgram(shaderProgram);
 
         // set matrices
-        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 initModel = glm::mat4(1.0f);
+        glm::mat4 model = glm::rotate(initModel, glm::radians(time * 50.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)window_width / window_height, 0.1f, 100.0f);
 
@@ -147,7 +166,7 @@ int main() {
         // set light and color
         glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), light_pos.x, light_pos.y, light_pos.z);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), light_color.x, light_color.y, light_color.z);
-        glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 0.5f, 0.5f, 0.8f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 1.0f, 1.0f);
 
         // bind VAO and draw
         glBindVertexArray(VAO);
@@ -157,16 +176,21 @@ int main() {
         // light control panel
         setupImGUIFrame();
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(200, window_height / 2));
+        ImGui::SetNextWindowSize(ImVec2(200, window_height / 3));
         ImGui::Begin("Light Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        ImGui::Text("Light Position");
         ImGui::SliderFloat("Light X", &light_pos.x, -10.0f, 10.0f);
         ImGui::SliderFloat("Light Y", &light_pos.y, -10.0f, 10.0f);
         ImGui::SliderFloat("Light Z", &light_pos.z, -10.0f, 10.0f);
+        ImGui::Text("Light Color");
+        ImGui::SliderFloat("Color R", &light_color.x, 0.0f, 1.0f);
+        ImGui::SliderFloat("Color G", &light_color.y, 0.0f, 1.0f);
+        ImGui::SliderFloat("Color B", &light_color.z, 0.0f, 1.0f);
         ImGui::End();
 
         // model control panel (for future use)
-        ImGui::SetNextWindowPos(ImVec2(0, window_height / 2));
-        ImGui::SetNextWindowSize(ImVec2(200, window_height / 2));
+        ImGui::SetNextWindowPos(ImVec2(0, window_height / 3));
+        ImGui::SetNextWindowSize(ImVec2(200, window_height / 3 * 2));
         ImGui::Begin("Model Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
         static char modelPath[128] = "";
         ImGui::InputText("Model Path", modelPath, 128);
@@ -177,6 +201,7 @@ int main() {
             } else {
                 vertices = obj.getVBO();
                 vertices_size = obj.getVBOSize();
+                updateVAOandVBO(vertices, vertices_size, VAO, VBO);
             }
         }
         if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {

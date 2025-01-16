@@ -18,6 +18,12 @@ bool objLoader::hasTexcoord() {
 }
 
 bool objLoader::load(const std::string& filename) {
+    if (this -> vbo) delete[] this -> vbo;
+    this -> vbo_size = 0;
+    vertices.clear();
+    normals.clear();
+    texcoord.clear();
+    faces.clear();
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Cannot open file: " << filename << std::endl;
@@ -127,7 +133,6 @@ bool objLoader::load(const std::string& filename) {
     }
     // copy to vbo
     this -> vbo_size = tmp_vbo.size() * sizeof(float);
-    if (this -> vbo) delete[] this -> vbo;
     this -> vbo = new float[tmp_vbo.size()];
     for (size_t i = 0; i < tmp_vbo.size(); i++)
         this -> vbo[i] = tmp_vbo[i];
