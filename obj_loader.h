@@ -21,6 +21,7 @@ public:
     size_t getVBOSize();
     const std::vector<std::tuple<int, std::string, material>> &getGroupIndices();
     void applyMaterial(size_t index, const material &mat);
+    bool save(const std::string &filename);
 private:
     float *vbo;
     size_t vbo_size;

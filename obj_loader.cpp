@@ -164,3 +164,55 @@ const std::vector<std::tuple<int, std::string, material>>& objLoader::getGroupIn
 void objLoader::applyMaterial(size_t idx, const material& mat) {
     this -> group_index[idx] = std::make_tuple(std::get<0>(this -> group_index[idx]), std::get<1>(this -> group_index[idx]), mat);
 }
+
+bool objLoader::save(const std::string& filename) {
+    // obj file
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Cannot open file: " << filename << std::endl;
+        return false;
+    }
+    // mtl file
+    size_t last_slash_pos = filename.find_last_of("/");
+    std::string mtl_filename = filename.substr(0, last_slash_pos + 1) + this -> material_lib.name + ".mtl";
+    std::ofstream mtl_file(mtl_filename);
+    if (!mtl_file.is_open()) {
+        std::cerr << "Cannot open file: " << mtl_filename << std::endl;
+        file.close();
+        return false;
+    }
+    // write vertices
+    file << "mtllib " << this -> material_lib.name << ".mtl" << std::endl;
+    for (size_t i = 0; i < this -> getVBOSize() / sizeof(float); i += 8)
+        file << "v " << vbo[i] << " " << vbo[i+1] << " " << vbo[i+2] << std::endl;
+    // write normals
+    // not implemented
+    // write texcoords
+    // not implemented
+    // write faces
+    for (size_t i = 0; i < this -> group_index.size(); i++) {
+        auto group = this -> group_index[i];
+        file << "g " << std::get<1>(group) << std::endl;
+        file << "usemtl " << std::get<1>(group)+"-material" << std::endl;
+        size_t start_index = std::get<0>(this -> group_index[i]); // count of vertex
+            size_t end_index = (i == this -> group_index.size() - 1) ? (this -> getVBOSize()) / sizeof(float) / 8 : std::get<0>(this -> group_index[i + 1]); // count of vertex
+        for (size_t j = start_index; j < end_index; j += 3) {
+            file << "f " << (j+1) << " " << (j+2) << " " << (j+3) << std::endl;
+        }
+    }
+    file.close();
+    // write mtl file
+    for (size_t i = 0; i < this -> group_index.size(); i++) {
+        auto group = this -> group_index[i];
+        auto name = std::get<1>(group)+"-material";
+        auto mat = std::get<2>(group);
+        mtl_file << "newmtl " << name << std::endl;
+        mtl_file << "Ka " << mat.ambient.x << " " << mat.ambient.y << " " << mat.ambient.z << std::endl;
+        mtl_file << "Kd " << mat.diffuse.x << " " << mat.diffuse.y << " " << mat.diffuse.z << std::endl;
+        mtl_file << "Ks " << mat.specular.x << " " << mat.specular.y << " " << mat.specular.z << std::endl;
+        mtl_file << "Ns " << mat.shininess << std::endl;
+        mtl_file << std::endl;
+    }
+    mtl_file.close();
+    return true;
+}

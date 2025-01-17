@@ -207,6 +207,7 @@ int main() {
         ImGui::SetNextWindowSize(ImVec2(300, window_height / 3 * 2));
         ImGui::Begin("Model Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
         static char modelPath[128] = "";
+        static char savePath[128] = "";
         ImGui::InputText("Model Path", modelPath, 128);
         if (ImGui::Button("Load Model")) {
             std::cout << "Loading model: " << modelPath << std::endl;
@@ -249,6 +250,16 @@ int main() {
             ImGui::SliderFloat("Shininess", &current_mtl.shininess, 0.0f, 100.0f);
             obj.applyMaterial(selected_group_index, current_mtl);
         }
+        // button to save the model
+        if (obj.getGroupIndices().size() > 0) {
+            ImGui::Text("Save Model");
+            ImGui::InputText("Save Path", savePath, 128);
+            if (ImGui::Button("Save")) {
+                std::cout << "Saving model: " << savePath << std::endl;
+                obj.save(savePath);
+            }
+        }
+
         ImGui::End();
         endImGUIFrame();
 
