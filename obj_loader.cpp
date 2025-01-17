@@ -9,6 +9,10 @@
     tar.push_back(src.x); \
     tar.push_back(src.y);
 
+objLoader::~objLoader() {
+    if (this -> vbo) delete[] this -> vbo;
+}
+
 bool objLoader::hasNormal() {
     return !(std::get<2>(this -> faces[0][0]) == -1);
 }
@@ -24,12 +28,19 @@ bool objLoader::load(const std::string& filename) {
     normals.clear();
     texcoord.clear();
     faces.clear();
+    material_lib.materials.clear();
+    group_index.clear();
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Cannot open file: " << filename << std::endl;
+        this -> vbo = nullptr;
         return false;
     }
     std::string line;
+    std::string current_group = "default";
+    material current_material;
+    // a group is activated if it has faces
+    bool group_activated = false;
     while (std::getline(file, line)) {
         if (line.empty() || line[0] == '#' || line[0] == ' ') continue;
         std::istringstream iss(line);
@@ -48,6 +59,10 @@ bool objLoader::load(const std::string& filename) {
             iss >> tex.x >> tex.y;
             texcoord.push_back(tex);
         } else if (prefix == "f") {
+            if (!group_activated) {
+                group_activated = true;
+                group_index.push_back(std::make_tuple(faces.size(), current_group, current_material));
+            }
             faces.resize(faces.size() + 1);
             std::string vertexInfo;
             while (iss >> vertexInfo) {
@@ -63,44 +78,32 @@ bool objLoader::load(const std::string& filename) {
                 while (v_n_t_index.size() < 3) v_n_t_index.push_back(-1);
                 faces[faces.size()-1].push_back(std::make_tuple(v_n_t_index[0], v_n_t_index[1], v_n_t_index[2]));
             }
+        } else if (prefix == "mtllib") {
+            std::string mtl_filename;
+            iss >> mtl_filename;
+            // construct mtl file path
+            size_t last_slash_pos = filename.find_last_of("/");
+            std::string mtl_path = filename.substr(0, last_slash_pos + 1) + mtl_filename;
+            std::cout << "Loading material library: " << mtl_path << std::endl;
+            // load mtl file
+            this -> material_lib.load(mtl_path);
+        } else if (prefix == "usemtl") {
+            std::string material_name;
+            iss >> material_name;
+            if ((this -> material_lib.materials).find(material_name) == (this -> material_lib.materials).end()) {
+                std::cerr << "Material not found: " << material_name << std::endl;
+                current_material = material();
+            } else {
+                current_material = this -> material_lib.materials[material_name];
+            }
+        } else if (prefix == "g") {
+            iss >> current_group;
+            group_activated = false;
         } else {
             std::cerr << "Unsupported format:" << prefix << std::endl;
         }
     }
     file.close();
-#if OBJ_LOADER_DBG
-    // print vertices
-    std::cout << "Vertices: " << std::endl;
-    for (auto& vertex : vertices) {
-        std::cout << "(" << vertex.x << ", " << vertex.y << ", " << vertex.z << ") ";
-    }
-    std::cout << std::endl;
-    // print normals
-    std::cout << "Normals: " << std::endl;
-    if (hasNormal()) {
-        for (auto& norm : normals) {
-            std::cout << "(" << norm.x << ", " << norm.y << ", " << norm.z << ") ";
-        }
-        std::cout << std::endl;
-    }
-    // print texcoord
-    std::cout << "Texcoord: " << std::endl;
-    if (hasTexcoord()) {
-        for (auto& tex : texcoord) {
-            std::cout << "(" << tex.x << ", " << tex.y << ") ";
-        }
-        std::cout << std::endl;
-    }
-    // print faces
-    std::cout << "Faces: " << std::endl;
-    std::cout << this -> hasNormal() << " " << this -> hasTexcoord() << std::endl;
-    for (auto& face : faces) {
-        for (auto& vertex : face) {
-            std::cout << "(" << std::get<0>(vertex) << ", " << std::get<1>(vertex) << ", " << std::get<2>(vertex) << ") ";
-        }
-        std::cout << std::endl;
-    }
-#endif
     // construct vbo
     std::vector<float> tmp_vbo(0);
     for (auto& face : faces) {
@@ -136,14 +139,6 @@ bool objLoader::load(const std::string& filename) {
     this -> vbo = new float[tmp_vbo.size()];
     for (size_t i = 0; i < tmp_vbo.size(); i++)
         this -> vbo[i] = tmp_vbo[i];
-#if OBJ_LOADER_DBG
-    // print tmp_vbo
-    for (size_t i = 0; i < tmp_vbo.size(); i += 8) {
-        std::cout << "v: " << tmp_vbo[i] << " " << tmp_vbo[i+1] << " " << tmp_vbo[i+2] << std::endl;
-        std::cout << "n: " << tmp_vbo[i+3] << " " << tmp_vbo[i+4] << " " << tmp_vbo[i+5] << std::endl;
-        std::cout << "t: " << tmp_vbo[i+6] << " " << tmp_vbo[i+7] << std::endl;
-    }
-#endif
     return true;
 }
 

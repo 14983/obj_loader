@@ -21,5 +21,6 @@ $(TARGET): $(OBJ)
 clean:
 	rm -f $(TARGET)
 	rm -f $(OBJ)
+	rm -f *.ini
 
 .PHONY: all clean run
