@@ -251,31 +251,33 @@ int main() {
             obj.applyMaterial(selected_group_index, current_mtl);
         }
         // button to transform the model
-        ImGui::Text("Model Transformation");
         static glm::vec3 translate = glm::vec3(0.0f);
         static glm::vec3 rotate = glm::vec3(0.0f);
         static glm::vec3 scale = glm::vec3(1.0f);
-        ImGui::SliderFloat3("Translate", &translate.x, -10.0f, 10.0f);
-        ImGui::SliderFloat3("Rotate", &rotate.x, -360.0f, 360.0f);
-        ImGui::SliderFloat3("Scale", &scale.x, 0.1f, 5.0f);
-        glm::mat4 new_transform = glm::translate(glm::mat4(1.0f), translate) * 
-            glm::rotate(glm::mat4(1.0f), glm::radians(rotate.x), glm::vec3(1.0f, 0.0f, 0.0f)) * 
-            glm::rotate(glm::mat4(1.0f), glm::radians(rotate.y), glm::vec3(0.0f, 1.0f, 0.0f)) * 
-            glm::rotate(glm::mat4(1.0f), glm::radians(rotate.z), glm::vec3(0.0f, 0.0f, 1.0f)) * 
-            glm::scale(glm::mat4(1.0f), scale);
-        if (ImGui::Button("Reset Transform")) {
-            std::cout << "Resetting transform" << std::endl;
-            translate = glm::vec3(0.0f);
-            rotate = glm::vec3(0.0f);
-            scale = glm::vec3(1.0f);
-            new_transform = glm::mat4(1.0f);
-        }
-        if (ImGui::Button("Transform Model")) {
-            std::cout << "Transforming model" << std::endl;
-            obj.applyTransform(selected_group_index, new_transform);
-            vertices = obj.getVBO();
-            vertices_size = obj.getVBOSize();
-            updateVAOandVBO(vertices, vertices_size, VAO, VBO);
+        if (obj.getGroupIndices().size() > 0) {
+            ImGui::Text("Model Transformation");
+            ImGui::SliderFloat3("Translate", &translate.x, -10.0f, 10.0f);
+            ImGui::SliderFloat3("Rotate", &rotate.x, -360.0f, 360.0f);
+            ImGui::SliderFloat3("Scale", &scale.x, 0.1f, 5.0f);
+            glm::mat4 new_transform = glm::translate(glm::mat4(1.0f), translate) * 
+                glm::rotate(glm::mat4(1.0f), glm::radians(rotate.x), glm::vec3(1.0f, 0.0f, 0.0f)) * 
+                glm::rotate(glm::mat4(1.0f), glm::radians(rotate.y), glm::vec3(0.0f, 1.0f, 0.0f)) * 
+                glm::rotate(glm::mat4(1.0f), glm::radians(rotate.z), glm::vec3(0.0f, 0.0f, 1.0f)) * 
+                glm::scale(glm::mat4(1.0f), scale);
+            if (ImGui::Button("Reset Transform")) {
+                std::cout << "Resetting transform" << std::endl;
+                translate = glm::vec3(0.0f);
+                rotate = glm::vec3(0.0f);
+                scale = glm::vec3(1.0f);
+                new_transform = glm::mat4(1.0f);
+            }
+            if (ImGui::Button("Transform Model")) {
+                std::cout << "Transforming model" << std::endl;
+                obj.applyTransform(selected_group_index, new_transform);
+                vertices = obj.getVBO();
+                vertices_size = obj.getVBOSize();
+                updateVAOandVBO(vertices, vertices_size, VAO, VBO);
+            }
         }
         // button to save the model
         if (obj.getGroupIndices().size() > 0) {
