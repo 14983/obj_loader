@@ -22,6 +22,7 @@ public:
     const std::vector<std::tuple<int, std::string, material>> &getGroupIndices();
     void applyMaterial(size_t index, const material &mat);
     bool save(const std::string &filename);
+    void applyTransform(size_t index, const glm::mat4 &transform);
 private:
     float *vbo;
     size_t vbo_size;

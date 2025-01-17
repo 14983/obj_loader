@@ -216,3 +216,24 @@ bool objLoader::save(const std::string& filename) {
     mtl_file.close();
     return true;
 }
+
+void objLoader::applyTransform(size_t idx, const glm::mat4& transform) {
+    auto group = this -> group_index[idx];
+    size_t start_index = std::get<0>(group) * 8; // count of vertex
+    size_t end_index = (idx == this -> group_index.size() - 1) ? (this -> getVBOSize()) / sizeof(float) : (std::get<0>(this -> group_index[idx + 1]) * 8); // count of vertex
+    for (size_t i = start_index; i < end_index; i += 8) {
+        glm::vec3 vertex(vbo[i], vbo[i+1], vbo[i+2]);
+        glm::vec3 normal(vbo[i+3], vbo[i+4], vbo[i+5]);
+        glm::vec2 texcoord(vbo[i+6], vbo[i+7]);
+        vertex = transform * glm::vec4(vertex, 1.0f);
+        normal = glm::normalize(glm::transpose(glm::inverse(glm::mat3(transform))) * normal);
+        vbo[i] = vertex.x;
+        vbo[i+1] = vertex.y;
+        vbo[i+2] = vertex.z;
+        vbo[i+3] = normal.x;
+        vbo[i+4] = normal.y;
+        vbo[i+5] = normal.z;
+        vbo[i+6] = texcoord.x;
+        vbo[i+7] = texcoord.y;
+    }
+}
