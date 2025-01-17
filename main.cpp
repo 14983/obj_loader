@@ -154,9 +154,10 @@ int main() {
         glUseProgram(shaderProgram);
 
         // set matrices
+        glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
         glm::mat4 initModel = glm::mat4(1.0f);
         glm::mat4 model = glm::rotate(initModel, glm::radians(time * 50.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)window_width / window_height, 0.1f, 100.0f);
 
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
@@ -166,22 +167,35 @@ int main() {
         // set light and color
         glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), light_pos.x, light_pos.y, light_pos.z);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), light_color.x, light_color.y, light_color.z);
-        glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "viewPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-        // bind VAO and draw
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, vertices_size / sizeof(float) / 8);
+        for (size_t i = 0; i < obj.getGroupIndices().size(); i++) {
+            size_t start_index = std::get<0>(obj.getGroupIndices()[i]);
+            size_t end_index = (i == obj.getGroupIndices().size() - 1) ? vertices_size / sizeof(float) / 8 : std::get<0>(obj.getGroupIndices()[i + 1]);
+            size_t count = end_index - start_index;
+            material current_mtl = std::get<2>(obj.getGroupIndices()[i]);
+
+            // set object color
+            glUniform3f(glGetUniformLocation(shaderProgram, "objectAmbientColor"), current_mtl.ambient.x, current_mtl.ambient.y, current_mtl.ambient.z);
+            glUniform3f(glGetUniformLocation(shaderProgram, "objectDiffuseColor"), current_mtl.diffuse.x, current_mtl.diffuse.y, current_mtl.diffuse.z);
+            glUniform3f(glGetUniformLocation(shaderProgram, "objectSpecularColor"), current_mtl.specular.x, current_mtl.specular.y, current_mtl.specular.z);
+            glUniform1f(glGetUniformLocation(shaderProgram, "objectShininess"), current_mtl.shininess);
+
+            // bind VAO and draw
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_TRIANGLES, start_index, count);
+        }
 
         // imgui
         // light control panel
         setupImGUIFrame();
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(200, window_height / 3));
+        ImGui::SetNextWindowSize(ImVec2(300, window_height / 3));
         ImGui::Begin("Light Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
         ImGui::Text("Light Position");
-        ImGui::SliderFloat("Light X", &light_pos.x, -10.0f, 10.0f);
-        ImGui::SliderFloat("Light Y", &light_pos.y, -10.0f, 10.0f);
-        ImGui::SliderFloat("Light Z", &light_pos.z, -10.0f, 10.0f);
+        ImGui::SliderFloat("Light X", &light_pos.x, -20.0f, 20.0f);
+        ImGui::SliderFloat("Light Y", &light_pos.y, -20.0f, 20.0f);
+        ImGui::SliderFloat("Light Z", &light_pos.z, -20.0f, 20.0f);
         ImGui::Text("Light Color");
         ImGui::SliderFloat("Color R", &light_color.x, 0.0f, 1.0f);
         ImGui::SliderFloat("Color G", &light_color.y, 0.0f, 1.0f);
@@ -190,7 +204,7 @@ int main() {
 
         // model control panel (for future use)
         ImGui::SetNextWindowPos(ImVec2(0, window_height / 3));
-        ImGui::SetNextWindowSize(ImVec2(200, window_height / 3 * 2));
+        ImGui::SetNextWindowSize(ImVec2(300, window_height / 3 * 2));
         ImGui::Begin("Model Control Panel", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
         static char modelPath[128] = "";
         ImGui::InputText("Model Path", modelPath, 128);
@@ -210,6 +224,30 @@ int main() {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
+        }
+        // group selector
+        static int selected_group_index = 0;
+        std::vector<const char*> group_names;
+        if (obj.getGroupIndices().size() > 0) {
+            ImGui::Text("Group Selector");
+            for (size_t i = 0; i < obj.getGroupIndices().size(); i++) {
+                const char* group_name = (std::get<1>(obj.getGroupIndices()[i])).c_str();
+                group_names.push_back(group_name);
+            }
+            if (ImGui::Combo("Select Group", &selected_group_index, group_names.data(), group_names.size())) {
+                std::cout << "Selected group: " << selected_group_index << " - " << group_names[selected_group_index] << std::endl;
+            }
+        }
+        // button control the material of selected group
+        if (obj.getGroupIndices().size() > 0) {
+            auto *current_group = &obj.getGroupIndices()[selected_group_index];
+            material current_mtl = std::get<2>(*current_group);
+            ImGui::Text("Material Control Panel");
+            ImGui::ColorEdit3("Ambient", &current_mtl.ambient.x);
+            ImGui::ColorEdit3("Diffuse", &current_mtl.diffuse.x);
+            ImGui::ColorEdit3("Specular", &current_mtl.specular.x);
+            ImGui::SliderFloat("Shininess", &current_mtl.shininess, 0.0f, 100.0f);
+            obj.applyMaterial(selected_group_index, current_mtl);
         }
         ImGui::End();
         endImGUIFrame();

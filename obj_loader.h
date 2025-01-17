@@ -19,6 +19,8 @@ public:
     bool hasTexcoord();
     const float *getVBO();
     size_t getVBOSize();
+    const std::vector<std::tuple<int, std::string, material>> &getGroupIndices();
+    void applyMaterial(size_t index, const material &mat);
 private:
     float *vbo;
     size_t vbo_size;

@@ -100,13 +100,20 @@ bool objLoader::load(const std::string& filename) {
             iss >> current_group;
             group_activated = false;
         } else {
-            std::cerr << "Unsupported format:" << prefix << std::endl;
+            // std::cerr << "Unsupported format:" << prefix << std::endl;
         }
     }
     file.close();
     // construct vbo
     std::vector<float> tmp_vbo(0);
-    for (auto& face : faces) {
+    size_t group_idx = 0;
+    for (size_t i = 0; i < faces.size(); i++) {
+        auto face = faces[i];
+        // convert group index to vbo offset
+        if (group_idx < group_index.size() && std::get<0>(group_index[group_idx]) == (int)i) {
+            group_index[group_idx] = std::make_tuple(tmp_vbo.size() / 8, std::get<1>(group_index[group_idx]), std::get<2>(group_index[group_idx]));
+            group_idx++;
+        }
         std::vector<std::tuple<int, int, int>> face_vertices(3);
         face_vertices[0] = face[0];
         for (size_t i = 1; i + 1 < face.size(); i++) {
@@ -148,4 +155,12 @@ const float* objLoader::getVBO() {
 
 size_t objLoader::getVBOSize() {
     return this -> vbo_size;
+}
+
+const std::vector<std::tuple<int, std::string, material>>& objLoader::getGroupIndices() {
+    return this -> group_index;
+}
+
+void objLoader::applyMaterial(size_t idx, const material& mat) {
+    this -> group_index[idx] = std::make_tuple(std::get<0>(this -> group_index[idx]), std::get<1>(this -> group_index[idx]), mat);
 }

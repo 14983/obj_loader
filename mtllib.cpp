@@ -47,7 +47,7 @@ bool mtl_file::load(const std::string& filename, bool append) {
             iss >> ns;
             mat.shininess = ns;
         } else {
-            std::cerr << "Unsupported material property: " << prefix << std::endl;
+            // std::cerr << "Unsupported material property: " << prefix << std::endl;
         }
     }
     if (dirty) this -> append(matname, mat);
