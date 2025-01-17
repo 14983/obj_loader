@@ -1,8 +1,8 @@
 CXX      := g++
-CXXFLAGS := -Wall -I/usr/include/imgui
+CXXFLAGS := -Wall -I/usr/include/imgui -Iinclude/
 LDFLAGS  := -lglfw -lGLEW -lGL -limgui -lstb
 
-SRC      := $(wildcard *.cpp)
+SRC      := $(wildcard src/*.cpp)
 OBJ      := $(SRC:.cpp=.o)
 TARGET   := main
 
